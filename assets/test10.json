@@ -1,0 +1,38 @@
+[
+    {
+        "across": "v_s",
+        "across_source": false,
+        "constant_type": "S",
+        "in_normal": false,
+        "source_node": 0,
+        "target_node": 1,
+        "through": "F_s",
+        "through_source": true,
+        "type": "S",
+        "value": 0.0
+    },
+    {
+        "across": "v_K",
+        "across_source": false,
+        "constant_type": "K",
+        "in_normal": false,
+        "source_node": 1,
+        "target_node": 0,
+        "through": "F_K",
+        "through_source": false,
+        "type": "T",
+        "value": 10
+    },
+    {
+        "across": "v_m",
+        "across_source": false,
+        "constant_type": "m",
+        "in_normal": false,
+        "source_node": 1,
+        "target_node": 0,
+        "through": "F_m",
+        "through_source": false,
+        "type": "A",
+        "value": 2
+    }
+]

@@ -1,0 +1,74 @@
+[
+    {
+        "across": "v_s",
+        "across_source": false,
+        "constant_type": "S",
+        "in_normal": false,
+        "source_node": 0,
+        "target_node": 1,
+        "through": "F_s",
+        "through_source": true,
+        "type": "S",
+        "value": 0.0
+    },
+    {
+        "across": "v_K2",
+        "across_source": false,
+        "constant_type": "K",
+        "in_normal": false,
+        "source_node": 1,
+        "target_node": 3,
+        "through": "F_K2",
+        "through_source": false,
+        "type": "T",
+        "value": 2.0
+    },
+    {
+        "across": "v_K1",
+        "across_source": false,
+        "constant_type": "K",
+        "in_normal": false,
+        "source_node": 1,
+        "target_node": 2,
+        "through": "F_K1",
+        "through_source": false,
+        "type": "T",
+        "value": 3.0
+    },
+    {
+        "across": "v_B1",
+        "across_source": false,
+        "constant_type": "B",
+        "in_normal": false,
+        "source_node": 2,
+        "target_node": 3,
+        "through": "F_B1",
+        "through_source": false,
+        "type": "D",
+        "value": 4
+    },
+    {
+        "across": "v_B2",
+        "across_source": false,
+        "constant_type": "B",
+        "in_normal": false,
+        "source_node": 3,
+        "target_node": 0,
+        "through": "F_B2",
+        "through_source": false,
+        "type": "D",
+        "value": 5
+    },
+    {
+        "across": "v_m",
+        "across_source": false,
+        "constant_type": "m",
+        "in_normal": false,
+        "source_node": 3,
+        "target_node": 0,
+        "through": "F_m",
+        "through_source": false,
+        "type": "A",
+        "value": 10
+    }
+]
