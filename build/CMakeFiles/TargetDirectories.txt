@@ -1,3 +1,0 @@
-/Users/manuelmartinezflores/Desktop/LinearGraphs/NormalTree/build/CMakeFiles/Main.dir
-/Users/manuelmartinezflores/Desktop/LinearGraphs/NormalTree/build/CMakeFiles/edit_cache.dir
-/Users/manuelmartinezflores/Desktop/LinearGraphs/NormalTree/build/CMakeFiles/rebuild_cache.dir
