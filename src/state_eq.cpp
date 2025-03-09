@@ -7,6 +7,7 @@
 #include <eigen3/Eigen/SparseLU>
 #include <unordered_set>
 #include <fstream>
+#include <omp.h>
 
 using namespace std;
 using json = nlohmann::json;
@@ -89,44 +90,61 @@ class ElementalEq {
 
 
 
- // Function to perform Gaussian elimination on a sparse matrix
+
 SparseMatrix<double> gaussianElimination(const SparseMatrix<double>& A, const vector<int>& priorityCols) {
     SparseMatrix<double> mat = A; // Copy the matrix
     int rows = mat.rows();
     int cols = mat.cols();
-
-
-
+    
+    // Convert to a format more suitable for row operations
+    mat.makeCompressed();
+    
     for (int row = rows-1; row >= 0; --row) {
         // Find the pivot column
-
         int pivotCol = -1;
-        for (int id=0; id<priorityCols.size(); ++id) {
+        for (int id = 0; id < priorityCols.size(); ++id) {
             if (abs(mat.coeff(row, priorityCols[id])) > EPSILON) {
                 pivotCol = priorityCols[id];
+                break;  // Take the first suitable pivot (added break)
             }
         }
 
         if (pivotCol == -1) continue; // No pivot in this column
 
+        // Extract the current row as a dense vector for efficient access
+        VectorXd currentRow = mat.row(row);
+        double pivotValue = currentRow(pivotCol);
+        
         // Normalize the pivot row
-        double pivotValue = mat.coeff(row, pivotCol);
+        currentRow /= pivotValue;
+        
+        // Update the matrix row (all at once)
         for (int c = 0; c < cols; ++c) {
-            mat.coeffRef(row, c) /= pivotValue;
+            mat.coeffRef(row, c) = currentRow(c);
         }
 
-        // Eliminate the current column in other rows
+        // Process other rows in parallel, but each thread works on a different row
+        #pragma omp parallel for
         for (int r = 0; r < rows; ++r) {
-            double factor = mat.coeff(r, pivotCol);
-            if (r != row && abs(factor) > EPSILON) {
-                for (int c = 0; c < cols; ++c) {
-                    mat.coeffRef(r, c) -= factor * mat.coeff(row, c);
+            if (r != row) {
+                double factor = mat.coeff(r, pivotCol);
+                if (abs(factor) > EPSILON) {
+                    // Extract row to dense vector for efficient operations
+                    VectorXd rowToModify = mat.row(r);
+                    // Subtract appropriately scaled pivot row
+                    rowToModify -= factor * currentRow;
+                    
+                    // Update the matrix row (all at once)
+                    for (int c = 0; c < cols; ++c) {
+                        mat.coeffRef(r, c) = rowToModify(c);
+                    }
                 }
             }
         }
     }
-
-    // Return the reduced matrix
+    
+    // Compress the matrix again before returning
+    mat.makeCompressed();
     return mat;
 }
 

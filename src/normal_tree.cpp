@@ -7,6 +7,7 @@
 #include <eigen3/Eigen/SparseLU>
 #include <unordered_set>
 #include <stack>
+#include <omp.h>
 #include "state_eq.cpp"
 
 using namespace std;
@@ -61,10 +62,14 @@ public:
     unordered_map<int, int> parent;
     unordered_set<int> independent;
     unordered_set<int> sources;
+    vector<int> in_normal;
     bool normal_tree_built;
     unordered_map<int, unordered_map<int, vector<int>>> edgelist;
     vector<Edge> edges;
-    unordered_map<int, unordered_map<int,int>> normal_neighbors;
+    unordered_map<int, unordered_map<int,int>> normal_neighbors;\
+    unordered_map<int, int> elemental_rows;
+    unordered_map<int, int> compatibility_rows; 
+    unordered_map<int, int> continuity_rows;
 
     LinearGraph(vector<Edge> edges){
         num_nodes = 0;
@@ -109,6 +114,8 @@ public:
         num_nodes = rank.size();
         if (edge.across_source or edge.through_source) {
             sources.insert(edge.id);
+        } else {
+            elemental_rows[edge.id] = elemental_rows.size();
         }
     }
 
@@ -133,16 +140,18 @@ public:
 
     void build_normal() {
         int tree_branches = 0;
+
         // All source across
         for (Edge& edge : edges){
             if (edge.across_source) {
                 if (!add_branch_to_normal(edge.source_node, edge.target_node)) {
-                    throw runtime_error("Sources form a loop");
+                    throw runtime_error("Across sources form a loop");
                 };
                 edge.in_normal = true;
                 ++tree_branches;
                 add_neighbors(edge.source_node, edge.target_node, edge.id);
                 add_neighbors(edge.target_node, edge.source_node, edge.id);
+                in_normal.push_back(edge.id);
             } 
         }
         for (Edge& edge : edges) {
@@ -153,19 +162,27 @@ public:
                     add_neighbors(edge.source_node, edge.target_node, edge.id);
                     add_neighbors(edge.target_node, edge.source_node, edge.id);
                     independent.insert(edge.id);
+                    in_normal.push_back(edge.id);
+                    continuity_rows[edge.id] = continuity_rows.size()*2 + num_edges - num_sources_across - num_sources_through;
+                } else {
+                    compatibility_rows[edge.id] = compatibility_rows.size()*2 + num_edges + 2*num_nodes - 3*num_sources_across - num_sources_through - 2;
                 }
             }
         }
         for (Edge& edge : edges) {
-            if (tree_branches == num_nodes - 1) {
-                break;
-            }
+            // if (tree_branches == num_nodes - 1) {
+            //     break;
+            // }
             if (edge.type == "D") {
                 if (add_branch_to_normal(edge.source_node, edge.target_node)) {
                     edge.in_normal = true;
                     ++tree_branches;
                     add_neighbors(edge.source_node, edge.target_node, edge.id);
                     add_neighbors(edge.target_node, edge.source_node, edge.id);
+                    in_normal.push_back(edge.id);
+                    continuity_rows[edge.id] = continuity_rows.size()*2 + num_edges - num_sources_across - num_sources_through;
+                } else {
+                    compatibility_rows[edge.id] = compatibility_rows.size()*2 + num_edges + 2*num_nodes - 3*num_sources_across - num_sources_through - 2;
                 }
             }
         }
@@ -177,8 +194,11 @@ public:
                     ++tree_branches;
                     add_neighbors(edge.source_node, edge.target_node, edge.id);
                     add_neighbors(edge.target_node, edge.source_node, edge.id);
+                    in_normal.push_back(edge.id);
+                    continuity_rows[edge.id] = continuity_rows.size()*2 + num_edges - num_sources_across - num_sources_through;
                 } else {
                     independent.insert(edge.id);
+                    compatibility_rows[edge.id] = compatibility_rows.size()*2 + num_edges + 2*num_nodes - 3*num_sources_across - num_sources_through - 2;
                 }
             }
         }
@@ -196,82 +216,92 @@ public:
         normal_tree_built = true;
     }
 
-    void generate_state_eq(string path) {
+    void generate_state_eq(string path, bool verbose=false) {
         if (!normal_tree_built) {
             build_normal();
         }
-        Eigen::SparseMatrix<double> matrix(3*num_edges-3*(num_sources_across+num_sources_through), 4*num_edges);
-        vector<string> primary;
-        vector<string> secondary;
-        int row = 0;
+        if (verbose) cout << "Normal tree built" << endl;
+        
+        // vector<string> primary;
+        // vector<string> secondary;
+        vector<Triplet<double>> triplets;  // Temporary storage
+        vector<vector<Triplet<double>>> thread_triplets(omp_get_max_threads());
+        if (verbose) cout << "Threads: " << omp_get_max_threads() << endl;
+        
 
         // Elemental equations
         ElementalEq eqs; 
-        for (Edge& edge : edges) {
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < edges.size(); ++i) {
+            Edge edge = edges[i];
             if (!edge.across_source and !edge.through_source) {
+                int thread_id = omp_get_thread_num();
+                int row = elemental_rows[edge.id];
+                vector<Triplet<double>> &local_triplets = thread_triplets[thread_id];
                 array<double,4> vals = eqs.equations[edge.constant_type] (edge.value);
                 for (int i=0; i<4; ++i) {
-                    matrix.insert(row, edge.id + i*num_edges) = vals[i];
+                    local_triplets.emplace_back(row, edge.id + i*num_edges, vals[i]);
                 }
-                ++row;
             }
         }
-        cout << "Elemental: " << row << endl;
+        if (verbose) cout << "Elemental equations built" << endl;
+
         // Continuity equations
-        for (auto& [k, map] : normal_neighbors) {
-            for (auto& [m, edgeid] : map) {
-                if (m <= k) continue;
-                // if (edges[edgeid].across_source) continue;
-                int n = edges[edgeid].source_node;
-                vector<int> vedge = edges_from_node(n);
-                if (vedge.size() == 0) continue;   
-                for (int edgeid : vedge) {
-                    Edge edge = edges[edgeid];
-                    if (edge.source_node == n){
-                        matrix.insert(row, edge.id + 3*num_edges) = 1;
-                        matrix.insert(row+1, edge.id + 2*num_edges) = 1;
-                    } else {
-                        matrix.insert(row, edge.id + 3*num_edges) = -1;
-                        matrix.insert(row+1, edge.id + 2*num_edges) = -1;
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < in_normal.size(); ++i) {
+            int edgeid = in_normal[i];
+            if (edges[edgeid].across_source) continue;
+            int thread_id = omp_get_thread_num();
+            int row = continuity_rows[edgeid];
+            vector<Triplet<double>> &local_triplets = thread_triplets[thread_id];
+            for (int n : children_nodes(edges[edgeid].source_node, edges[edgeid].target_node)) {
+                for (int m : children_nodes(edges[edgeid].target_node, edges[edgeid].source_node)) {
+                    if (edgelist.find(n) != edgelist.end() && edgelist[n].find(m) != edgelist[n].end()){
+                        for (int edgeidx : edgelist[n][m]) {
+                            local_triplets.emplace_back(row, edgeidx + 3*num_edges, 1);
+                            local_triplets.emplace_back(row+1, edgeidx + 2*num_edges, 1);
+                        }
                     }
+                    if (edgelist.find(m) != edgelist.end() && edgelist[m].find(n) != edgelist[m].end()){
+                        for (int edgeidx : edgelist[m][n]) {
+                            local_triplets.emplace_back(row, edgeidx + 3*num_edges, -1);
+                            local_triplets.emplace_back(row+1, edgeidx + 2*num_edges, -1);
+                        } 
+                    }
+                    
                 }
-                ++row;
-                ++row;
             }
         }
-        cout << "Continuity: " << row << endl;
-        // for (int n=0; n<num_nodes; ++n) {
-        //     vector<Edge> edges = edges_from_node(n);
-        //     if (edges.size() == 0) {
-        //         continue;
-        //     }
-        //     for (Edge& edge: edges_from_node(n)) {
-        //         if (edge.source_node == n){
-        //             matrix.insert(row, edge.id + 3*num_edges) = 1;
-        //         } else {
-        //             matrix.insert(row, edge.id + 3*num_edges) = -1;
-        //         }
-        //     }
-        //     ++row;
-        // }
+        if (verbose) cout << "Continuity equations built" << endl;
+
 
         // Compatibility
-        for (Edge& edge : edges) {
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < edges.size(); ++i) {
+            const Edge edge = edges[i];
             if (edge.in_normal or edge.through_source) continue;
-            matrix.insert(row, edge.id + num_edges) = -1;
-            matrix.insert(row+1, edge.id) = -1;
+            int thread_id = omp_get_thread_num();
+            int row = compatibility_rows[edge.id];
+            vector<Triplet<double>> &local_triplets = thread_triplets[thread_id];
+            local_triplets.emplace_back(row, edge.id + num_edges, -1);
+            local_triplets.emplace_back(row+1, edge.id, -1);
             for (auto& [edgeid, value] : get_path(edge.source_node, edge.target_node)) {
-                matrix.insert(row, edgeid + num_edges) = value;
-                matrix.insert(row+1, edgeid) = value;
+                local_triplets.emplace_back(row, edgeid + num_edges, value);
+                local_triplets.emplace_back(row+1, edgeid, value);
             }
-            ++row;
-            ++row;
         }
-        cout << "Compatibility: " << row << endl;
+        for (const auto &local : thread_triplets) {
+            triplets.insert(triplets.end(), local.begin(), local.end());
+        }
 
+        if (verbose) cout << "Compatibility equations built" << endl;
 
-        saveSparseMatrixToCSV(matrix, "../assets/" + path + "_eqs.csv");
+        Eigen::SparseMatrix<double> matrix(3*num_edges-3*(num_sources_across+num_sources_through), 4*num_edges);
+        matrix.setFromTriplets(triplets.begin(), triplets.end());
+
+        if (path != "") saveSparseMatrixToCSV(matrix, "../assets/" + path + "_eqs.csv");
         matrix.makeCompressed();
+        if (verbose) cout << "Equations matrix built" << endl;
         vector<int> priorityVars;
         for (Edge& edge : edges) {
             if ((independent.find(edge.id) == independent.end()) and  (sources.find(edge.id) == sources.end())) {
@@ -295,59 +325,28 @@ public:
             priorityVars.push_back(var + num_edges);
         }
         matrix = gaussianElimination(matrix, priorityVars);
-        priorityVars = {};
-        // for (int edgeid : independent) {
-        //     int var = edgeid + 2 * edges[edgeid].in_normal * num_edges;
-        //     priorityVars.push_back(var);
-        //     priorityVars.push_back(var + num_edges);
-        // }
-        // for (int edgeid : sources) {
-        //     int var = edgeid + 2 * edges[edgeid].in_normal * num_edges;
-        //     priorityVars.push_back(var);
-        //     priorityVars.push_back(var + num_edges);
-        // }
-        // for (int id : independent) {
-        //     cout << id << "\n";
-        // }
-        // for (int id : priorityVars) {
-        //     cout << id << "\n";
-        // }
-        // for (int edgeid : independent) {
-        //     int var = edgeid + 2 * edges[edgeid].in_normal * num_edges;
-        //     priorityVars.push_back(var);
-        //     priorityVars.push_back(var + num_edges);
-        // }
-        // for (int edgeid : sources) {
-        //     int var = edgeid + 2 * edges[edgeid].in_normal * num_edges;
-        //     priorityVars.push_back(var);
-        //     priorityVars.push_back(var + num_edges);
-        // }
-        // matrix = gaussianElimination(matrix, priorityVars);
+        if (verbose) cout << "Equations reduced" << endl;
         
-        saveSparseMatrixToCSV(matrix, "../assets/" + path + "_reduced.csv");
+        if (path != "") saveSparseMatrixToCSV(matrix, "../assets/" + path + "_reduced.csv");
+        // return matrix;
     }
     
-    vector<int> edges_from_node(int n) {
-        vector<int> redges;
-        bool flag = false;
-        for (auto& [source, map] : edgelist) {
-            for (auto& [target, list] : map) {
-                if (target == n or source == n) {
-                    for (int edgeid : list) {
-                        flag = edges[edgeid].across_source or flag;
-                        redges.push_back(edgeid);
-                        if (flag) {break;}
-                    }
+    unordered_set<int> children_nodes(int n, int avoid) {
+        unordered_set<int> children = {n}; 
+        stack<int> line;
+        line.push(n);
+        while (!line.empty()) {
+            int node = line.top();
+            line.pop(); 
+            if (normal_neighbors.find(node) == normal_neighbors.end()) throw runtime_error("Graph not connected");
+            for (auto& [m, list] : normal_neighbors[node]) {
+                if (children.find(m) == children.end() and m != avoid) {
+                    children.insert(m); 
+                    line.push(m);
                 }
-                if (flag) {break;}
             }
-            if (flag) {break;}
         }
-        if (!flag) {
-            return redges;
-        }
-        vector<int> edges;
-        return edges;
+        return children;
     }
 
     unordered_map<int, int> get_path(int from, int to) {
