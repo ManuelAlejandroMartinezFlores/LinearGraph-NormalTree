@@ -73,4 +73,12 @@
 <g fill="rgb(0%, 0%, 0%)" fill-opacity="1">
 <use xlink:href="#glyph-2-0" x="28.769" y="17.388"/>
 </g>
+<style>
+    @media (prefers-color-scheme: dark) {
+      .color { fill: white; }
+    }
+    @media (prefers-color-scheme: light) {
+      .color { fill: black; }
+    }
+  </style>
 </svg>
