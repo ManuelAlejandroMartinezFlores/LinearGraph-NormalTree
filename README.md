@@ -14,6 +14,7 @@ We will begin by showing an example <br>
   <source media="(prefers-color-scheme: dark)" srcset="/assets/tests/test17/graph17_light.svg" >
   <img alt="Graph 17'" src="/assets/tests/test17/graph17.svg">
 </picture>
+
 <br>
 
 <picture>
