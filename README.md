@@ -6,6 +6,6 @@ We will begin by showing an example <br>
 ![example](/assets/tests/test17/fig17.svg) <br>
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="/assets/tests/test17/fig17.svg" >
-  <img alt="Text changing depending on mode. Light: 'So light!' Dark: 'So dark!'" src="/assets/tests/test17/fig17_light.svg" fill="black" stroke="white">
+  <img alt="Text changing depending on mode. Light: 'So light!' Dark: 'So dark!'" src="/assets/tests/test17/fig17_light.svg">
 </picture>
 
