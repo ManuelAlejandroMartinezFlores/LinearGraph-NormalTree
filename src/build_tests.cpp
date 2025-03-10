@@ -28,11 +28,11 @@ void save_graph(vector<int> sources, vector<int> targets, string name) {
 
 
 void test(string name){
-    LinearGraph g = graph_from_json("../assets/" + name + ".json");
+    LinearGraph g = graph_from_json("../assets/" + name + "/edges.json");
     g.build_normal();
-    g.generate_state_eq("");
-    // g.get_path(0, 2);
-    // g.save_to_json("../assets/" + name + "_normal_tree.json");
+    g.generate_state_eq(name);
+    g.get_path(0, 2);
+    g.save_to_json("../assets/" + name + "/normal_tree.json");
 
 }
 

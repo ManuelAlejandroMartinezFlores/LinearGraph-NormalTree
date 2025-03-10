@@ -296,10 +296,10 @@ public:
 
         if (verbose) cout << "Compatibility equations built" << endl;
 
-        Eigen::SparseMatrix<double> matrix(3*num_edges-3*(num_sources_across+num_sources_through), 4*num_edges);
+        Eigen::SparseMatrix<double, RowMajor> matrix(3*num_edges-3*(num_sources_across+num_sources_through), 4*num_edges);
         matrix.setFromTriplets(triplets.begin(), triplets.end());
 
-        if (path != "") saveSparseMatrixToCSV(matrix, "../assets/" + path + "_eqs.csv");
+        if (path != "") saveSparseMatrixToCSV(matrix, "../assets/" + path + "/eqs.csv");
         matrix.makeCompressed();
         if (verbose) cout << "Equations matrix built" << endl;
         vector<int> priorityVars;
@@ -326,8 +326,75 @@ public:
         }
         matrix = gaussianElimination(matrix, priorityVars);
         if (verbose) cout << "Equations reduced" << endl;
+        if (path != "") saveSparseMatrixToCSV(matrix, "../assets/" + path + "/reduced.csv");
+
+        SparseMatrix<double> var_matrix(independent.size(), independent.size());
+        SparseMatrix<double> source_matrix(independent.size(), sources.size()*2);
+        unordered_map<int, int> var_cols;
+        vector<string> x;
+        for (int edgeid : independent) {
+            int var = edgeid + 2 * num_edges * !edges[edgeid].in_normal;
+            // var_cols[var] = var_cols.size();
+            var_cols[var + num_edges] = var_cols.size();
+            if (edges[edgeid].in_normal) {
+                x.push_back(edges[edgeid].across); 
+            } else {
+                x.push_back(edges[edgeid].through); 
+            }
+        }
+        unordered_map<int, int> source_cols;
+        vector<string> s;
+        for (int edgeid : sources) {
+            int var = edgeid + 2 * num_edges * !edges[edgeid].in_normal;
+            source_cols[var] = source_cols.size();
+            source_cols[var + num_edges] = source_cols.size();
+            if (edges[edgeid].in_normal) {
+                s.push_back("d" + edges[edgeid].across); 
+                s.push_back(edges[edgeid].across); 
+                
+            } else {
+                s.push_back("d" + edges[edgeid].through);
+                s.push_back(edges[edgeid].through);   
+            }
+        }
+        saveVarIndex(x, "../assets/" + path + "/var_index.csv");
+        saveVarIndex(s, "../assets/" + path + "/sources_index.csv");
+        int new_row = 0;
+        for (int edgeid : independent) {
+            int var = edgeid + 2 * num_edges * !edges[edgeid].in_normal;
+            for (int row = 0; row<matrix.rows(); row++) {
+                if (abs(matrix.coeff(row, var)) > EPSILON) {
+                    double factor = -matrix.coeff(row, var);
+                    for (Eigen::SparseMatrix<double, RowMajor>::InnerIterator it(matrix, row); it; ++it) {
+                        if (abs(it.value()) < EPSILON) continue;
+                        if (it.col() == var) continue;
+                        
+                        if (source_cols.find(it.col()) == source_cols.end()) {
+                            if (var_cols.find(it.col()) == var_cols.end()) {
+                                throw runtime_error("Could not reduce equations");
+                            }
+                            var_matrix.insert(new_row, var_cols[it.col()]) = it.value() / factor;
+                        } else if (var_cols.find(it.col()) == var_cols.end()) {
+                            if (source_cols.find(it.col()) == source_cols.end()) {
+                                throw runtime_error("Could not reduce equations");
+                            }
+                            source_matrix.insert(new_row, source_cols[it.col()]) = it.value() / factor;
+                        }
+                        
+                    }
+                    break;
+                }
+            }
+            
+            new_row++;
+        }
+
+
+        var_matrix.makeCompressed();
+        source_matrix.makeCompressed();
         
-        if (path != "") saveSparseMatrixToCSV(matrix, "../assets/" + path + "_reduced.csv");
+        if (path != "") saveSparseMatrixToCSV(var_matrix, "../assets/" + path + "/var.csv");
+        if (path != "") saveSparseMatrixToCSV(source_matrix, "../assets/" + path + "/sources.csv");
         // return matrix;
     }
     

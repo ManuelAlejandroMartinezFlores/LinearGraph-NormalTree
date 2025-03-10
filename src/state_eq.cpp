@@ -40,14 +40,22 @@ class ElementalEq {
 
     // }
 };
+
+class StateEq {
+
+    public:
+
+
+
+};
+
  
     void saveSparseMatrixToCSV(const SparseMatrix<double>& mat, const string& filename) {
         ofstream file;
         file.open(filename);
     
         if (!file.is_open()) {
-            cerr << "Error opening the file!" << endl;
-            return;
+            throw runtime_error("Error opening the file! " + filename);
         }
     
         // Iterate over all non-zero elements
@@ -88,6 +96,16 @@ class ElementalEq {
     }
     
 
+    void saveVarIndex(const vector<string>& vars, const string& filename) {
+        ofstream file(filename);
+        if (!file.is_open()) {
+            throw runtime_error("Could not open file: " + filename);
+        }
+        for (int i=0; i<vars.size(); ++i) {
+            file << i << "," << vars[i] << endl;
+        }
+        file.close();
+    }
 
 
 

@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
     // vector<int> sources = {0, 1, 1};
     // vector<int> targets = {1, 0, 0};
     // save_graph(sources, targets, "test10");
-    benchmark(argv[1]); 
+    test(argv[1]); 
     return 0;
 }
 
