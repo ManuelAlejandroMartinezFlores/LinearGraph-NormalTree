@@ -121,6 +121,9 @@ public:
 
 
     void save_to_json(string path) {
+        /*
+        saves to json file
+        */
         json j = edges;
         ofstream file(path);
         file << j.dump(4);
@@ -139,6 +142,15 @@ public:
     }
 
     void build_normal() {
+        /*
+        Builds the normal tree:
+        - Include all across sources
+        - Include all possible "A" types (those included become independent components)
+        - Include all possible "D" types
+        - Include all possible "T" types (those not included become independent components)
+        - Check that no through sources can be included
+        Moreover, it assigns row to each variable in the state equation
+        */
         int tree_branches = 0;
 
         // All source across
@@ -154,6 +166,7 @@ public:
                 in_normal.push_back(edge.id);
             } 
         }
+        // All posible A types
         for (Edge& edge : edges) {
             if (edge.type == "A") {
                 if (add_branch_to_normal(edge.source_node, edge.target_node)) {
@@ -169,6 +182,7 @@ public:
                 }
             }
         }
+        // All posible D types
         for (Edge& edge : edges) {
             // if (tree_branches == num_nodes - 1) {
             //     break;
@@ -186,6 +200,7 @@ public:
                 }
             }
         }
+        // All possible "T" types
         for (Edge& edge : edges) {
             if (edge.type == "T") {
                 // cout << edge.id << "\n";
@@ -217,13 +232,18 @@ public:
     }
 
     void generate_state_eq(string path, bool verbose=false) {
+        /*
+        Generates state equations 
+        - Writes B-S elemental equations for all non-source edges
+        - Writes N-1-SA continuity equations by getting all the child nodes from both source and target nodes and assuring the flux in between is constant
+        - Writes B-N+1-ST compatibility equations by inserting a link into the tree and assuring the path from source to target in the tree equals the link
+        Then it solves the system using Gaussian elimination and selects the independent variables to get dx = Ax + Bs
+        */
         if (!normal_tree_built) {
             build_normal();
         }
         if (verbose) cout << "Normal tree built" << endl;
         
-        // vector<string> primary;
-        // vector<string> secondary;
         vector<Triplet<double>> triplets;  // Temporary storage
         vector<vector<Triplet<double>>> thread_triplets(omp_get_max_threads());
         if (verbose) cout << "Threads: " << omp_get_max_threads() << endl;
@@ -254,6 +274,7 @@ public:
             int thread_id = omp_get_thread_num();
             int row = continuity_rows[edgeid];
             vector<Triplet<double>> &local_triplets = thread_triplets[thread_id];
+            // Get all children nodes and assert equal flux
             for (int n : children_nodes(edges[edgeid].source_node, edges[edgeid].target_node)) {
                 for (int m : children_nodes(edges[edgeid].target_node, edges[edgeid].source_node)) {
                     if (edgelist.find(n) != edgelist.end() && edgelist[n].find(m) != edgelist[n].end()){
@@ -285,6 +306,7 @@ public:
             vector<Triplet<double>> &local_triplets = thread_triplets[thread_id];
             local_triplets.emplace_back(row, edge.id + num_edges, -1);
             local_triplets.emplace_back(row+1, edge.id, -1);
+            // Get path and assure equality
             for (auto& [edgeid, value] : get_path(edge.source_node, edge.target_node)) {
                 local_triplets.emplace_back(row, edgeid + num_edges, value);
                 local_triplets.emplace_back(row+1, edgeid, value);
@@ -296,12 +318,15 @@ public:
 
         if (verbose) cout << "Compatibility equations built" << endl;
 
+        // Build matrix
         Eigen::SparseMatrix<double, RowMajor> matrix(3*num_edges-3*(num_sources_across+num_sources_through), 4*num_edges);
         matrix.setFromTriplets(triplets.begin(), triplets.end());
 
         if (path != "") saveSparseMatrixToCSV(matrix, "../assets/" + path + "/eqs.csv");
         matrix.makeCompressed();
         if (verbose) cout << "Equations matrix built" << endl;
+
+        // Define priority of variable elimination in the Gaussian method
         vector<int> priorityVars;
         for (Edge& edge : edges) {
             if ((independent.find(edge.id) == independent.end()) and  (sources.find(edge.id) == sources.end())) {
@@ -324,13 +349,19 @@ public:
             priorityVars.push_back(var);
             priorityVars.push_back(var + num_edges);
         }
+
+        // Execute gaussian elimination
         matrix = gaussianElimination(matrix, priorityVars);
         if (verbose) cout << "Equations reduced" << endl;
         if (path != "") saveSparseMatrixToCSV(matrix, "../assets/" + path + "/reduced.csv");
 
+
+
         SparseMatrix<double> var_matrix(independent.size(), independent.size());
         SparseMatrix<double> source_matrix(independent.size(), sources.size()*2);
         unordered_map<int, int> var_cols;
+
+        // Identify independent variables
         vector<string> x;
         for (int edgeid : independent) {
             int var = edgeid + 2 * num_edges * !edges[edgeid].in_normal;
@@ -357,6 +388,8 @@ public:
                 s.push_back(edges[edgeid].through);   
             }
         }
+
+        // Only include independent variables in state equations
         saveVarIndex(x, "../assets/" + path + "/var_index.csv");
         saveVarIndex(s, "../assets/" + path + "/sources_index.csv");
         int new_row = 0;
@@ -399,6 +432,9 @@ public:
     }
     
     unordered_set<int> children_nodes(int n, int avoid) {
+        /*
+        Get all children nodes in the tree avoiding one node
+        */
         unordered_set<int> children = {n}; 
         stack<int> line;
         line.push(n);
@@ -417,6 +453,9 @@ public:
     }
 
     unordered_map<int, int> get_path(int from, int to) {
+        /*
+        Gets the path in the normal tree using DFS
+        */
         unordered_set<int> visited; 
         unordered_map<int, int> parent;
         unordered_map<int, int> corresponding_edge;

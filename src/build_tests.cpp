@@ -10,6 +10,9 @@ using json = nlohmann::json;
 
 
 void save_graph(vector<int> sources, vector<int> targets, string name) {
+    /*
+    Saves a graph with given sources and targets
+    */
     vector<Edge> edges;
     if (sources.size() != targets.size()) {
         throw runtime_error("Different sizes");
@@ -28,6 +31,9 @@ void save_graph(vector<int> sources, vector<int> targets, string name) {
 
 
 void test(string name){
+    /*
+    Builds the normal tree and generates state equations for a graph
+    */
     LinearGraph g = graph_from_json("../assets/" + name + "/edges.json");
     g.build_normal();
     g.generate_state_eq(name);
@@ -37,6 +43,9 @@ void test(string name){
 }
 
 void benchmark(string test_name) {
+    /*
+    Benchmarks the time performance of operations in different number of threads
+    */
     json j;
     ifstream file("../assets/" + test_name + ".json");
     file >> j;

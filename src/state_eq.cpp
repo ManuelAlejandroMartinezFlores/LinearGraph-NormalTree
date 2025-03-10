@@ -20,6 +20,9 @@ class ElementalEq {
     unordered_map<string, function<array<double,4>(double)>> equations;
 
     ElementalEq() {
+        /*
+        Elemental equations in the form [dv, v, dF, F]
+        */
         equations["m"] = [](double value) -> array<double,4> {
             return {value, 0, 0, -1};
         };
@@ -30,27 +33,13 @@ class ElementalEq {
             return {0.0, value, 0, -1};
         };
     }
-
-    // void load_equations(string path) {
-    //     ifstream file("../assets/" + path);
-    //     json j;
-    //     file >> j;
-    //     file.close();
-    //     equations = j.get<unordered_map<string, function<array<double,4>(double)>>>();
-
-    // }
-};
-
-class StateEq {
-
-    public:
-
-
-
 };
 
  
     void saveSparseMatrixToCSV(const SparseMatrix<double>& mat, const string& filename) {
+        /*
+        Saves matrix to CSV in (row, col, val) format
+        */
         ofstream file;
         file.open(filename);
     
@@ -70,33 +59,10 @@ class StateEq {
         file.close();
     }
 
-// Function to save a SparseMatrix to a CSV file (with each row of the matrix as a row in the CSV)
-    void saveSparseMatrixRowWise(const SparseMatrix<double>& mat, const string& filename) {
-        ofstream file;
-        file.open(filename);
-        if (!file.is_open()) {
-            cerr << "Error opening the file!" << endl;
-            return;
-        }
-        // Iterate over all rows of the matrix
-        for (int i = 0; i < mat.rows(); ++i) {
-            for (int j = 0; j < mat.cols(); ++j) {
-                // Write the value (zero if not explicitly set)
-                double value = mat.coeff(i, j); // Returns 0 if the element is zero
-                file << value;  // Write the value to the CSV file
-    
-                // Avoid trailing comma after the last element in the row
-                if (j < mat.cols() - 1) {
-                    file << ","; // Separate values with commas
-                }
-            }
-            file << endl; // End of the row in the CSV
-        }
-        file.close();
-    }
-    
-
     void saveVarIndex(const vector<string>& vars, const string& filename) {
+        /*
+        Saves the index of variables in a (id, var) format
+        */
         ofstream file(filename);
         if (!file.is_open()) {
             throw runtime_error("Could not open file: " + filename);
