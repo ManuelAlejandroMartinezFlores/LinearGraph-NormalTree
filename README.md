@@ -54,7 +54,11 @@ Now we generate the state equations using the following procedure:
 
 Now we reduce to the minimal equations only involving the independent state variables and the sources using Gaussian elimination. <br>
 
-The result is a system $\dot{x} = Ax + Bs$ where $x$ is a vector written in a file `varIndex.csv`, $A$ is written in `var.csv`, $s$ is written in `sourcesIndex.csv` and $B$ is written in `sources.csv`.
+The result is a system $\dot{x} = Ax + Bs$ where $x$ is a vector written in a file `var_index.csv`, $A$ is written in `var.csv`, $s$ is written in `sources_index.csv` and $B$ is written in `sources.csv`. <br>
+
+We can check that in this case we get 
+$$x=(F_{K_1}\quad v_m)\quad \mathrm{ and }\quad s = (\dot{F_s}\quad F_s)$$ 
+
 
 
 
