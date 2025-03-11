@@ -52,7 +52,10 @@ Now we generate the state equations using the following procedure:
 - Writes $N-1-S_A$ continuity equations by getting all the child nodes from both source and target nodes and assuring the flux in between is constant
 - Writes $B-N+1-S_T$ compatibility equations by inserting a link into the tree and assuring the path from source to target in the tree equals the link
 
-Now we reduce to the minimal equations only involving the independent state variables and the sources using Gaussian elimination.
+Now we reduce to the minimal equations only involving the independent state variables and the sources using Gaussian elimination. <br>
+
+The result is a system 
+$$ \dot{x} = Ax + Bs $$
 
 
 
