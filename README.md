@@ -57,7 +57,9 @@ Now we reduce to the minimal equations only involving the independent state vari
 The result is a system $\dot{x} = Ax + Bs$ where $x$ is a vector written in a file `var_index.csv`, $A$ is written in `var.csv`, $s$ is written in `sources_index.csv` and $B$ is written in `sources.csv`. <br>
 
 We can check that in this case we get 
-$$x=(F_{K_1}\quad v_m)\quad \mathrm{ and }\quad s = (\dot{F_s}\quad F_s)$$ 
+$$x=(F_{K_1}\quad v_m)\quad \mathrm{ and }\quad s = (\dot{F_s}\quad F_s)$$ <br>
+
+If you want to run the algorithm you must create a new folder `foldername` in `/assets` and a file `foldername/edges.json` with the information about the graph. Then put `foldername` next to `./Main` in the `run.txt` file. After, you can run `bash run.txxt` in a command line to get the results.
 
 
 
