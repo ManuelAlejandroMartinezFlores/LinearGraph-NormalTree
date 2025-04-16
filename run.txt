@@ -1,6 +1,6 @@
 cmake -S . -B build 
 cmake --build build
 cd build
-./Main tests/test10
-./Main tests/test17
+./Main test10
+./Main test17
 cd ..

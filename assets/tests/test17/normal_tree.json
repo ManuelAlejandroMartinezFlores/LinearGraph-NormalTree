@@ -2,6 +2,7 @@
     {
         "across": "v_s",
         "across_source": false,
+        "constant": "Fs",
         "constant_type": "S",
         "in_normal": false,
         "source_node": 0,
@@ -14,6 +15,7 @@
     {
         "across": "v_K2",
         "across_source": false,
+        "constant": "K2",
         "constant_type": "K",
         "in_normal": true,
         "source_node": 1,
@@ -26,6 +28,7 @@
     {
         "across": "v_K1",
         "across_source": false,
+        "constant": "K1",
         "constant_type": "K",
         "in_normal": false,
         "source_node": 1,
@@ -38,6 +41,7 @@
     {
         "across": "v_B1",
         "across_source": false,
+        "constant": "B1",
         "constant_type": "B",
         "in_normal": true,
         "source_node": 2,
@@ -50,6 +54,7 @@
     {
         "across": "v_B2",
         "across_source": false,
+        "constant": "B2",
         "constant_type": "B",
         "in_normal": false,
         "source_node": 3,
@@ -62,6 +67,7 @@
     {
         "across": "v_m",
         "across_source": false,
+        "constant": "m",
         "constant_type": "m",
         "in_normal": true,
         "source_node": 3,

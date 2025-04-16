@@ -34,11 +34,11 @@ void test(string name){
     /*
     Builds the normal tree and generates state equations for a graph
     */
-    LinearGraph g = graph_from_json("../assets/" + name + "/edges.json");
+    LinearGraph g = graph_from_json(join_paths({"..", "assets", "tests", name, "edges.json"}));
     g.build_normal();
-    g.generate_state_eq(name);
-    g.get_path(0, 2);
-    g.save_to_json("../assets/" + name + "/normal_tree.json");
+    g.generate_state_eq(join_paths({"..", "assets", "tests", name}), true);
+    g.generate_state_eq_symbolic(join_paths({"..", "assets", "tests", name, "symb"}), true);
+    g.save_to_json(join_paths({"..", "assets", "tests", name, "normal_tree.json"}));
 
 }
 
