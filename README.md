@@ -59,7 +59,9 @@ The result is a system $\dot{x} = Ax + Bs$ where $x$ is a vector written in a fi
 We can check that in this case we get 
 $$x=(F_{K_1}\quad v_m)\quad \mathrm{ and }\quad s = (\dot{F_s}\quad F_s)$$ <br>
 
-If you want to run the algorithm you must create a new folder `foldername` in `/assets` and a file `foldername/edges.json` with the information about the graph. Then put `foldername` next to `./Main` in the `run.txt` file. After, you can run `bash run.txxt` in a command line to get the results.
+Moreover, this algorithm supports symbolic solutions <br>
+
+If you want to run the algorithm you must create a new folder `foldername` in `/assets` and a file `foldername/edges.json` with the information about the graph. Then put `foldername` next to `./Main` in the `run.txt` file. After, you can run `bash run.txt` in a command line to get the results.
 
 
 
