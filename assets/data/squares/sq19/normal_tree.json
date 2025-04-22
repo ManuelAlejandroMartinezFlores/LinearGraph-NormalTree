@@ -1,0 +1,41 @@
+[
+    {
+        "across": "VL0",
+        "across_source": false,
+        "constant": "L0",
+        "constant_type": "L",
+        "in_normal": false,
+        "source_node": 0,
+        "target_node": 1,
+        "through": "iL0",
+        "through_source": false,
+        "type": "T",
+        "value": 1.5905659881052592
+    },
+    {
+        "across": "Vs",
+        "across_source": true,
+        "constant": "",
+        "constant_type": "S",
+        "in_normal": true,
+        "source_node": 1,
+        "target_node": 2,
+        "through": "is",
+        "through_source": false,
+        "type": "S",
+        "value": 7.457537888984498
+    },
+    {
+        "across": "VC2VC3",
+        "across_source": false,
+        "constant": "1/(1/C2+1/C3)",
+        "constant_type": "C",
+        "in_normal": true,
+        "source_node": 2,
+        "target_node": 0,
+        "through": "iC2iC3",
+        "through_source": false,
+        "type": "A",
+        "value": 2.5151803795848386
+    }
+]

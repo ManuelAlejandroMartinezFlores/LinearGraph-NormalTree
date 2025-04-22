@@ -21,7 +21,7 @@ class ElementalEq {
 
     ElementalEq() {
         /*
-        Elemental equations in the form [dv, v, dF, F]
+        Elemental equations in the form [dA, A, dT, T] = 0
         */
         equations["m"] = [](double value) -> array<double,4> {
             return {value, 0, 0, -1};
@@ -31,6 +31,15 @@ class ElementalEq {
         };
         equations["B"] = [](double value) -> array<double,4> {
             return {0.0, value, 0, -1};
+        };
+        equations["C"] = [](double value) -> array<double,4> {
+            return {value, 0, 0, -1};
+        };
+        equations["L"] = [](double value) -> array<double,4> {
+            return {0, 1, -value, 0};
+        };
+        equations["R"] = [](double value) -> array<double,4> {
+            return {0, 1, 0, -value};
         };
     }
 };
@@ -44,15 +53,24 @@ class ElementalEqSymbols {
         /*
         Elemental equations in the form [dv, v, dF, F]
         */
-       equations["m"] = [] (string var) -> array<shared_ptr<Expression>,4> {
-        return {make_shared<Symbol>(var), make_shared<Scalar>(0), make_shared<Scalar>(0), make_shared<Scalar>(-1)};
-       }; 
-       equations["K"] = [] (string var) -> array<shared_ptr<Expression>,4> {
-        return {make_shared<Scalar>(0), make_shared<Symbol>(var), make_shared<Scalar>(-1), make_shared<Scalar>(0)};
-       }; 
-       equations["B"] = [] (string var) -> array<shared_ptr<Expression>,4> {
-        return {make_shared<Scalar>(0), make_shared<Symbol>(var), make_shared<Scalar>(0), make_shared<Scalar>(-1)};
-       }; 
+        equations["m"] = [] (string var) -> array<shared_ptr<Expression>,4> {
+            return {make_shared<Symbol>(var), make_shared<Scalar>(0), make_shared<Scalar>(0), make_shared<Scalar>(-1)};
+        }; 
+        equations["K"] = [] (string var) -> array<shared_ptr<Expression>,4> {
+            return {make_shared<Scalar>(0), make_shared<Symbol>(var), make_shared<Scalar>(-1), make_shared<Scalar>(0)};
+        }; 
+        equations["B"] = [] (string var) -> array<shared_ptr<Expression>,4> {
+            return {make_shared<Scalar>(0), make_shared<Symbol>(var), make_shared<Scalar>(0), make_shared<Scalar>(-1)};
+        }; 
+        equations["C"] = [] (string var) -> array<shared_ptr<Expression>,4> {
+            return {make_shared<Symbol>(var), make_shared<Scalar>(0), make_shared<Scalar>(0), make_shared<Scalar>(-1)};
+        }; 
+        equations["L"] = [] (string var) -> array<shared_ptr<Expression>,4> {
+            return {make_shared<Scalar>(-1), make_shared<Scalar>(0), make_shared<Symbol>(var), make_shared<Scalar>(0)};
+        };
+        equations["R"] = [] (string var) -> array<shared_ptr<Expression>,4> {
+            return {make_shared<Scalar>(0), make_shared<Scalar>(-1), make_shared<Scalar>(0), make_shared<Symbol>(var)};
+        }; 
     }
 
 
@@ -173,7 +191,7 @@ class SparseMatrix {
                         ref(row, c) = val / pivotValue;
                     }
                 }
-                for (int r = row-1; r >= 0; --r) {
+                for (int r = rows()-1; r >= 0; --r) {
                     if (r != row) {
                         T factor = operator()(r, pivotCol);
                         if (abs(factor) > EPSILON) {

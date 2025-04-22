@@ -1,0 +1,54 @@
+[
+    {
+        "across": "VC0",
+        "across_source": false,
+        "constant": "C0",
+        "constant_type": "C",
+        "in_normal": true,
+        "source_node": 0,
+        "target_node": 1,
+        "through": "iC0",
+        "through_source": false,
+        "type": "A",
+        "value": 9.69691122203464
+    },
+    {
+        "across": "Vs",
+        "across_source": true,
+        "constant": "",
+        "constant_type": "S",
+        "in_normal": true,
+        "source_node": 1,
+        "target_node": 2,
+        "through": "is",
+        "through_source": false,
+        "type": "S",
+        "value": 1.7983578525846031
+    },
+    {
+        "across": "VC2",
+        "across_source": false,
+        "constant": "C2",
+        "constant_type": "C",
+        "in_normal": true,
+        "source_node": 2,
+        "target_node": 3,
+        "through": "iC2",
+        "through_source": false,
+        "type": "A",
+        "value": 8.064248065090098
+    },
+    {
+        "across": "VR3",
+        "across_source": false,
+        "constant": "R3",
+        "constant_type": "R",
+        "in_normal": false,
+        "source_node": 3,
+        "target_node": 0,
+        "through": "iR3",
+        "through_source": false,
+        "type": "D",
+        "value": 6.243563686637933
+    }
+]

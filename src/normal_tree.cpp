@@ -38,7 +38,7 @@ class Edge {
     bool in_normal;
 
     Edge() {
-        id = 0;
+        id = -1;
         source_node = 0; 
         target_node = 0;
         type = "A";
@@ -50,6 +50,23 @@ class Edge {
         through = "";
         constant = "";
         in_normal = false;
+    }
+
+    Edge copy() {
+        Edge ans;
+        ans.id = id;
+        ans.source_node = source_node;
+        ans.target_node = target_node;
+        ans.type = type;
+        ans.constant_type = constant_type;
+        ans.constant = constant;
+        ans.value = value;
+        ans.across_source = across_source;
+        ans.through_source = through_source;
+        ans.across = across;
+        ans.through = through;
+        ans.in_normal = in_normal;
+        return ans;
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Edge& e) {
@@ -75,7 +92,7 @@ public:
     bool normal_tree_built;
     unordered_map<int, unordered_map<int, vector<int>>> edgelist;
     vector<Edge> edges;
-    unordered_map<int, unordered_map<int,int>> normal_neighbors;\
+    unordered_map<int, unordered_map<int,int>> normal_neighbors;
     unordered_map<int, int> elemental_rows;
     unordered_map<int, int> compatibility_rows; 
     unordered_map<int, int> continuity_rows;
@@ -96,7 +113,94 @@ public:
         normal_tree_built = false;
     }
 
+
+    void remove_edge(int edgeid) {
+        Edge edge = edges[edgeid];
+        edgelist[edge.source_node][edge.target_node].erase(
+            find(
+                edgelist[edge.source_node][edge.target_node].begin(),
+                edgelist[edge.source_node][edge.target_node].end(),
+                edgeid
+            )
+        );
+        edges.erase(edges.begin() + edgeid);
+        for (int i=edgeid; i<edges.size(); i++) {
+            Edge e = edges[i];
+            edgelist[e.source_node][e.target_node].erase(
+                find(
+                    edgelist[e.source_node][e.target_node].begin(),
+                    edgelist[e.source_node][e.target_node].end(),
+                    e.id
+                )
+            );
+            edges[i].id = i;
+            edgelist[e.source_node][e.target_node].emplace_back(i);
+        }
+        num_edges = edges.size();
+    }
+
     void add_edge(Edge& edge) {
+        if (edge.type == "A") {
+            // Find A edges in series 
+            // Finde next edge
+            if (edgelist.find(edge.target_node) != edgelist.end()) {
+                if (edgelist[edge.target_node].size() == 1) {
+                    for (auto& [target, list] : edgelist[edge.target_node]) {
+                        if (list.size() == 1) {
+                            int edgeid = list[0];
+                            if (edges[edgeid].type == "A") {
+                                Edge newedge = edges[edgeid].copy();
+                                newedge.across += edge.across;
+                                newedge.through += edge.through;
+                                newedge.source_node = edge.source_node;
+                                newedge.value = 1 / (1 / newedge.value + 1 / edge.value);
+                                newedge.constant = "1/(1/" + newedge.constant + "+1/" + edge.constant + ")";
+                                remove_edge(edgeid);
+                                return add_edge(newedge);
+                            }
+                        }
+                    }
+                }
+            }
+            // Find previous edge
+            int sourceid = -1;
+            int cnt = 0;
+            for (auto& [source, list] : edgelist) {
+                if (list.find(edge.source_node) != list.end()) {
+                    sourceid = source;
+                    cnt++;
+                }
+            }
+            if (cnt == 1) {
+                if (edgelist[sourceid][edge.source_node].size() == 1) {
+                    int edgeid = edgelist[sourceid][edge.source_node][0];
+                    if (edges[edgeid].type == "A") {
+                        Edge newedge = edges[edgeid].copy();
+                        newedge.across += edge.across;
+                        newedge.through += edge.through;
+                        newedge.target_node = edge.target_node;
+                        newedge.value = 1 / (1 / newedge.value + 1 / edge.value);
+                        newedge.constant = "1/(1/" + newedge.constant + "+1/" + edge.constant + ")";
+                        remove_edge(edgeid);
+                        return add_edge(newedge) ;
+                    }
+                }
+            }
+        }
+        if (edge.type == "T") {
+            // Find parallel T edges
+            if (edgelist.find(edge.source_node) != edgelist.end()) {
+                if (edgelist[edge.source_node].find(edge.target_node) != edgelist[edge.source_node].end()) {
+                    for (int edgeid : edgelist[edge.source_node][edge.target_node]) {
+                        if (edges[edgeid].type == "T") {
+                            edges[edgeid].value = 1 / (1 / edges[edgeid].value + 1 / edge.value);
+                            edges[edgeid].constant = "1/(1/" + edges[edgeid].constant + "+1/" + edge.constant + ")";
+                            return;
+                        }
+                    }
+                }
+            }
+        }
         edge.id = num_edges;
         rank[edge.source_node] = 1;
         parent[edge.source_node] = edge.source_node;
@@ -111,21 +215,10 @@ public:
             edgelist[edge.source_node].emplace(edge.target_node, vector<int>());
         }
         edgelist[edge.source_node][edge.target_node].push_back(edge.id);
-        if (edge.across_source) {
-            ++num_sources_across;
-        }
-        if (edge.through_source) {
-            ++num_sources_through;
-        }
         edges.push_back(edge);
-        ++num_edges;
         normal_tree_built = false;
         num_nodes = rank.size();
-        if (edge.across_source or edge.through_source) {
-            sources.insert(edge.id);
-        } else {
-            elemental_rows[edge.id] = elemental_rows.size();
-        }
+        num_edges = edges.size();
     }
 
 
@@ -161,8 +254,15 @@ public:
         Moreover, it assigns row to each variable in the state equation
         */
         int tree_branches = 0;
-        independent = unordered_set<int>();
+        independent = {};
+        sources = {};
+        elemental_rows = {};
+        num_sources_across = 0;
+        num_sources_through = 0;
+        num_edges = edges.size();
+        num_nodes = 0;
 
+        unordered_set<int> diff_nodes;
         // All source across
         for (Edge& edge : edges){
             if (edge.across_source) {
@@ -175,7 +275,21 @@ public:
                 add_neighbors(edge.target_node, edge.source_node, edge.id);
                 in_normal.push_back(edge.id);
             } 
+            if (edge.across_source or edge.through_source) {
+                sources.insert(edge.id);
+            } else {
+                elemental_rows[edge.id] = elemental_rows.size();
+            }
+            if (edge.across_source) {
+                ++num_sources_across;
+            }
+            if (edge.through_source) {
+                ++num_sources_through;
+            }
+            diff_nodes.insert(edge.source_node);
+            diff_nodes.insert(edge.target_node);
         }
+        num_nodes = diff_nodes.size();
         // All posible A types
         for (Edge& edge : edges) {
             if (edge.type == "A") {
@@ -194,9 +308,6 @@ public:
         }
         // All posible D types
         for (Edge& edge : edges) {
-            // if (tree_branches == num_nodes - 1) {
-            //     break;
-            // }
             if (edge.type == "D") {
                 if (add_branch_to_normal(edge.source_node, edge.target_node)) {
                     edge.in_normal = true;
@@ -235,9 +346,9 @@ public:
             }
         }
 
-        if (tree_branches != num_nodes - 1) {
-            throw runtime_error("Could not build normal tree");
-        }
+        // if (tree_branches != num_nodes - 1) {
+        //     throw runtime_error("Could not build normal tree");
+        // }
         normal_tree_built = true;
     }
 
@@ -310,7 +421,7 @@ public:
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < edges.size(); ++i) {
             const Edge edge = edges[i];
-            if (edge.in_normal or edge.through_source) continue;
+            if (edge.in_normal || edge.through_source) continue;
             int thread_id = omp_get_thread_num();
             int row = compatibility_rows[edge.id];
             vector<Triplet<double>> &local_triplets = thread_triplets[thread_id];
@@ -337,30 +448,62 @@ public:
 
         // Define priority of variable elimination in the Gaussian method
         vector<int> priorityVars;
-        for (Edge& edge : edges) {
-            if ((independent.find(edge.id) == independent.end()) and  (sources.find(edge.id) == sources.end())) {
-                int var = edge.id + 2 * edge.in_normal * num_edges;
-                priorityVars.push_back(var);
-                priorityVars.push_back(var + num_edges);
-            }  
-        }
         
+
+        // Non-sources and non-independent primary 
         for (Edge& edge : edges) {
-            if ((independent.find(edge.id) == independent.end()) and (sources.find(edge.id) == sources.end())) {
+            if ((independent.find(edge.id) == independent.end()) && (sources.find(edge.id) == sources.end())) {
                 int var = edge.id + 2 * !edge.in_normal * num_edges;
                 priorityVars.push_back(var);
                 priorityVars.push_back(var + num_edges);
             }  
         }
+
         
+
+        // Non-sources and non-independent secondary
+        for (Edge& edge : edges) {
+            if ((independent.find(edge.id) == independent.end()) || (sources.find(edge.id) == sources.end())) {
+                int var = edge.id + 2 * edge.in_normal * num_edges;
+                priorityVars.push_back(var);
+                priorityVars.push_back(var + num_edges);
+            }  
+        }
+
+        
+
+
+        // Independent secondary
         for (int edgeid : independent) {
             int var = edgeid + 2 * edges[edgeid].in_normal * num_edges;
             priorityVars.push_back(var);
             priorityVars.push_back(var + num_edges);
         }
 
+        // Independent primary
+        for (int edgeid : independent) {
+            int var = edgeid + 2 * !edges[edgeid].in_normal * num_edges;
+            priorityVars.push_back(var);
+            // priorityVars.push_back(var + num_edges);
+        }
+
+        
+
+        // Sources
+        for (int edgeid : sources) {
+            int var = edgeid + 2 * edges[edgeid].in_normal * num_edges;
+            priorityVars.push_back(var);
+            priorityVars.push_back(var + num_edges);
+            var = edgeid + 2 * !edges[edgeid].in_normal * num_edges;
+            priorityVars.push_back(var);
+            priorityVars.push_back(var + num_edges);
+        }
+        
+        
+
         // Execute gaussian elimination
         matrix.gaussianElimination(priorityVars);
+
         if (verbose) cout << "Equations reduced" << endl;
         if (path != "") matrix.toCSV(join_paths({path, "reduced.csv"}));
 
@@ -408,11 +551,12 @@ public:
                 if (abs(matrix(row, var)) > EPSILON) {
                     auto factor = - matrix(row, var);
                     for (auto& [col, value] : matrix.iterator(row)) {
-                        
                         if (abs(value) < EPSILON) continue;
                         if (col == var) continue;
                         if (source_cols.find(col) == source_cols.end()) {
                             if (var_cols.find(col) == var_cols.end()) {
+                                // cout << "var " << var << endl;
+                                // cout << row << ", " << col << endl;
                                 throw runtime_error("Could not reduce equations");
                             }
                             var_matrix.ref(new_row, var_cols[col]) = value / factor;
@@ -439,7 +583,7 @@ public:
     }
     
     void generate_state_eq_symbolic(string path, bool verbose=false) {
-        /*
+       /*
         Generates state equations 
         - Writes B-S elemental equations for all non-source edges
         - Writes N-1-SA continuity equations by getting all the child nodes from both source and target nodes and assuring the flux in between is constant
@@ -465,7 +609,7 @@ public:
                 int thread_id = omp_get_thread_num();
                 int row = elemental_rows[edge.id];
                 vector<Triplet<shared_ptr<Expression>>> &local_triplets = thread_triplets[thread_id];
-                array<shared_ptr<Expression>,4> vals = eqs.equations[edge.constant_type] (edge.constant);
+                array<shared_ptr<Expression>,4> vals = eqs.equations[edge.constant_type](edge.constant);
                 for (int i=0; i<4; ++i) {
                     local_triplets.emplace_back(row, edge.id + i*num_edges, vals[i]);
                 }
@@ -507,7 +651,7 @@ public:
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < edges.size(); ++i) {
             const Edge edge = edges[i];
-            if (edge.in_normal or edge.through_source) continue;
+            if (edge.in_normal || edge.through_source) continue;
             int thread_id = omp_get_thread_num();
             int row = compatibility_rows[edge.id];
             vector<Triplet<shared_ptr<Expression>>> &local_triplets = thread_triplets[thread_id];
@@ -526,8 +670,7 @@ public:
         if (verbose) cout << "Compatibility equations built" << endl;
 
         // Build matrix
-        SparseMatrix<shared_ptr<Expression>> matrix(3*num_edges-3*(num_sources_across+num_sources_through), 4*num_edges, 
-                                                    make_shared<Scalar>(0), make_shared<Scalar>(1));
+        SparseMatrix<shared_ptr<Expression>> matrix(3*num_edges-3*(num_sources_across+num_sources_through), 4*num_edges, make_shared<Scalar>(0), make_shared<Scalar>(1));
         matrix.fromTriplets(triplets);
 
         if (path != "") matrix.toCSV(join_paths({path, "eqs.csv"}));
@@ -535,30 +678,62 @@ public:
 
         // Define priority of variable elimination in the Gaussian method
         vector<int> priorityVars;
-        for (Edge& edge : edges) {
-            if ((independent.find(edge.id) == independent.end()) and  (sources.find(edge.id) == sources.end())) {
-                int var = edge.id + 2 * edge.in_normal * num_edges;
-                priorityVars.push_back(var);
-                priorityVars.push_back(var + num_edges);
-            }  
-        }
         
+
+        // Non-sources and non-independent primary 
         for (Edge& edge : edges) {
-            if ((independent.find(edge.id) == independent.end()) and (sources.find(edge.id) == sources.end())) {
+            if ((independent.find(edge.id) == independent.end()) && (sources.find(edge.id) == sources.end())) {
                 int var = edge.id + 2 * !edge.in_normal * num_edges;
                 priorityVars.push_back(var);
                 priorityVars.push_back(var + num_edges);
             }  
         }
+
         
+
+        // Non-sources and non-independent secondary
+        for (Edge& edge : edges) {
+            if ((independent.find(edge.id) == independent.end()) || (sources.find(edge.id) == sources.end())) {
+                int var = edge.id + 2 * edge.in_normal * num_edges;
+                priorityVars.push_back(var);
+                priorityVars.push_back(var + num_edges);
+            }  
+        }
+
+        
+
+
+        // Independent secondary
         for (int edgeid : independent) {
             int var = edgeid + 2 * edges[edgeid].in_normal * num_edges;
             priorityVars.push_back(var);
             priorityVars.push_back(var + num_edges);
         }
 
+        // Independent primary
+        for (int edgeid : independent) {
+            int var = edgeid + 2 * !edges[edgeid].in_normal * num_edges;
+            priorityVars.push_back(var);
+            // priorityVars.push_back(var + num_edges);
+        }
+
+        
+
+        // Sources
+        for (int edgeid : sources) {
+            int var = edgeid + 2 * edges[edgeid].in_normal * num_edges;
+            priorityVars.push_back(var);
+            priorityVars.push_back(var + num_edges);
+            var = edgeid + 2 * !edges[edgeid].in_normal * num_edges;
+            priorityVars.push_back(var);
+            priorityVars.push_back(var + num_edges);
+        }
+        
+        
+
         // Execute gaussian elimination
         matrix.gaussianElimination(priorityVars);
+
         if (verbose) cout << "Equations reduced" << endl;
         if (path != "") matrix.toCSV(join_paths({path, "reduced.csv"}));
 
@@ -610,6 +785,8 @@ public:
                         if (col == var) continue;
                         if (source_cols.find(col) == source_cols.end()) {
                             if (var_cols.find(col) == var_cols.end()) {
+                                // cout << "var " << var << endl;
+                                // cout << row << ", " << col << endl;
                                 throw runtime_error("Could not reduce equations");
                             }
                             var_matrix.ref(new_row, var_cols[col]) = value / factor;
@@ -627,6 +804,9 @@ public:
             new_row++;
         }
 
+
+        // var_matrix.makeCompressed();
+        // source_matrix.makeCompressed();
         
         if (path != "") var_matrix.toCSV(join_paths({path, "var.csv"}));
         if (path != "") source_matrix.toCSV(join_paths({path, "sources.csv"}));
@@ -725,7 +905,7 @@ public:
         return true;
     }
 
-    
+
 
 };
 
@@ -737,4 +917,17 @@ LinearGraph graph_from_json(string path) {
     vector<Edge> edges = j.get<vector<Edge>>();
     LinearGraph g(edges);
     return g;
-}
+};
+
+
+void solve_system(string path, bool verbose=false) {
+    LinearGraph g = graph_from_json(join_paths({path, "edges.json"}));
+    if (verbose) cout << "Loaded from json" << endl;
+    g.build_normal();
+    if (verbose) cout << "Built normal" << endl;
+    g.save_to_json(join_paths({path, "normal_tree.json"}));
+    g.generate_state_eq(path, verbose);
+    if (verbose) cout << "Generate equations" << endl;
+    // g.generate_state_eq_symbolic(join_paths({path, "symb"}), false);
+    
+};
