@@ -6,8 +6,8 @@ We will begin by showing an example <br>
 
 <center>
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="/assets/tests/test17/fig17.svg" >
-  <img alt="Figure 17'" src="/assets/tests/test17/fig17_light.svg"  width="300" height="300">
+  <source media="(prefers-color-scheme: dark)" srcset="/assets/tests/test17/visual/fig17.svg" >
+  <img alt="Figure 17'" src="/assets/tests/test17/visual/fig17_light.svg"  width="300" height="300">
 </picture>
 </center>
 
@@ -19,8 +19,8 @@ Which is equivalent to the following graph
 
 <center>
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="/assets/tests/test17/graph17.svg" >
-  <img alt="Graph 17'" src="/assets/tests/test17/graph17_light.svg" width="300" height="300">
+  <source media="(prefers-color-scheme: dark)" srcset="/assets/tests/test17/visual/graph17.svg" >
+  <img alt="Graph 17'" src="/assets/tests/test17/visual/graph17_light.svg" width="300" height="300">
 </picture>
 </center>
 
@@ -39,8 +39,8 @@ That results in the following tree:
 
 <center>
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="/assets/tests/test17/tree17.svg" >
-  <img alt="Normal Tree 17'" src="/assets/tests/test17/tree17_light.svg" width="300" height="300">
+  <source media="(prefers-color-scheme: dark)" srcset="/assets/tests/test17/visual/tree17.svg" >
+  <img alt="Normal Tree 17'" src="/assets/tests/test17/visual/tree17_light.svg" width="300" height="300">
 </picture>
 </center>
 
@@ -59,7 +59,9 @@ The result is a system $\dot{x} = Ax + Bs$ where $x$ is a vector written in a fi
 We can check that in this case we get 
 $$x=(F_{K_1}\quad v_m)\quad \mathrm{ and }\quad s = (\dot{F_s}\quad F_s)$$ <br>
 
-If you want to run the algorithm you must create a new folder `foldername` in `/assets` and a file `foldername/edges.json` with the information about the graph. Then put `foldername` next to `./Main` in the `run.txt` file. After, you can run `bash run.txxt` in a command line to get the results.
+Moreover, this algorithm supports symbolic solutions <br>
+
+If you want to run the algorithm you must create a new folder `foldername` in `/assets` and a file `foldername/edges.json` with the information about the graph. Then put `foldername` next to `./Main` in the `run.txt` file. After, you can run `bash run.txt` in a command line to get the results.
 
 
 
