@@ -26,14 +26,14 @@
         "value": 1.7763436656679445
     },
     {
-        "across": "VC2VC3",
+        "across": "VC3VC2",
         "across_source": false,
-        "constant": "1/(1/C2+1/C3)",
+        "constant": "1/(1/C3+1/C2)",
         "constant_type": "C",
         "in_normal": true,
         "source_node": 2,
         "target_node": 0,
-        "through": "iC2iC3",
+        "through": "iC3iC2",
         "through_source": false,
         "type": "A",
         "value": 1.2207475939794799

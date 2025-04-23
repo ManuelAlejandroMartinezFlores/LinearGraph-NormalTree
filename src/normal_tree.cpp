@@ -140,67 +140,6 @@ public:
     }
 
     void add_edge(Edge& edge) {
-        if (edge.type == "A") {
-            // Find A edges in series 
-            // Finde next edge
-            if (edgelist.find(edge.target_node) != edgelist.end()) {
-                if (edgelist[edge.target_node].size() == 1) {
-                    for (auto& [target, list] : edgelist[edge.target_node]) {
-                        if (list.size() == 1) {
-                            int edgeid = list[0];
-                            if (edges[edgeid].type == "A") {
-                                Edge newedge = edges[edgeid].copy();
-                                newedge.across += edge.across;
-                                newedge.through += edge.through;
-                                newedge.source_node = edge.source_node;
-                                newedge.value = 1 / (1 / newedge.value + 1 / edge.value);
-                                newedge.constant = "1/(1/" + newedge.constant + "+1/" + edge.constant + ")";
-                                remove_edge(edgeid);
-                                return add_edge(newedge);
-                            }
-                        }
-                    }
-                }
-            }
-            // Find previous edge
-            int sourceid = -1;
-            int cnt = 0;
-            for (auto& [source, list] : edgelist) {
-                if (list.find(edge.source_node) != list.end()) {
-                    sourceid = source;
-                    cnt++;
-                }
-            }
-            if (cnt == 1) {
-                if (edgelist[sourceid][edge.source_node].size() == 1) {
-                    int edgeid = edgelist[sourceid][edge.source_node][0];
-                    if (edges[edgeid].type == "A") {
-                        Edge newedge = edges[edgeid].copy();
-                        newedge.across += edge.across;
-                        newedge.through += edge.through;
-                        newedge.target_node = edge.target_node;
-                        newedge.value = 1 / (1 / newedge.value + 1 / edge.value);
-                        newedge.constant = "1/(1/" + newedge.constant + "+1/" + edge.constant + ")";
-                        remove_edge(edgeid);
-                        return add_edge(newedge) ;
-                    }
-                }
-            }
-        }
-        if (edge.type == "T") {
-            // Find parallel T edges
-            if (edgelist.find(edge.source_node) != edgelist.end()) {
-                if (edgelist[edge.source_node].find(edge.target_node) != edgelist[edge.source_node].end()) {
-                    for (int edgeid : edgelist[edge.source_node][edge.target_node]) {
-                        if (edges[edgeid].type == "T") {
-                            edges[edgeid].value = 1 / (1 / edges[edgeid].value + 1 / edge.value);
-                            edges[edgeid].constant = "1/(1/" + edges[edgeid].constant + "+1/" + edge.constant + ")";
-                            return;
-                        }
-                    }
-                }
-            }
-        }
         edge.id = num_edges;
         rank[edge.source_node] = 1;
         parent[edge.source_node] = edge.source_node;
@@ -221,6 +160,84 @@ public:
         num_edges = edges.size();
     }
 
+    void simplify_edges() {
+        for (Edge& edge : edges) {
+            if (edge.type == "A") {
+                // Find A edges in series 
+                // Finde next edge
+                if (edgelist.find(edge.target_node) != edgelist.end()) {
+                    if (edgelist[edge.target_node].size() == 1) {
+                        for (auto& [target, list] : edgelist[edge.target_node]) {
+                            if (list.size() == 1) {
+                                int edgeid = list[0];
+                                if (edges[edgeid].type == "A") {
+                                    Edge newedge = edges[edgeid].copy();
+                                    newedge.across += edge.across;
+                                    newedge.through += edge.through;
+                                    newedge.source_node = edge.source_node;
+                                    newedge.value = 1 / (1 / newedge.value + 1 / edge.value);
+                                    newedge.constant = "1/(1/" + newedge.constant + "+1/" + edge.constant + ")";
+                                    int otherid = edge.id;
+                                    if (edgeid < otherid) {
+                                        otherid = otherid - 1;
+                                    }
+                                    remove_edge(edgeid);
+                                    remove_edge(otherid);
+                                    add_edge(newedge);
+                                    return simplify_edges();
+                                }
+                            }
+                        }
+                    }
+                }
+                // Find previous edge
+                int sourceid = -1;
+                int cnt = 0;
+                for (auto& [source, list] : edgelist) {
+                    if (list.find(edge.source_node) != list.end()) {
+                        sourceid = source;
+                        cnt++;
+                    }
+                }
+                if (cnt == 1) {
+                    if (edgelist[sourceid][edge.source_node].size() == 1) {
+                        int edgeid = edgelist[sourceid][edge.source_node][0];
+                        if (edges[edgeid].type == "A") {
+                            Edge newedge = edges[edgeid].copy();
+                            newedge.across += edge.across;
+                            newedge.through += edge.through;
+                            newedge.target_node = edge.target_node;
+                            newedge.value = 1 / (1 / newedge.value + 1 / edge.value);
+                            newedge.constant = "1/(1/" + newedge.constant + "+1/" + edge.constant + ")";
+                            int otherid = edge.id;
+                            if (edgeid < otherid) {
+                                otherid = otherid - 1;
+                            }
+                            remove_edge(edgeid);
+                            remove_edge(otherid);
+                            add_edge(newedge) ;
+                            return simplify_edges();
+                        }
+                    }
+                }
+            }
+            if (edge.type == "T") {
+                // Find parallel T edges
+                if (edgelist.find(edge.source_node) != edgelist.end()) {
+                    if (edgelist[edge.source_node].find(edge.target_node) != edgelist[edge.source_node].end()) {
+                        for (int edgeid : edgelist[edge.source_node][edge.target_node]) {
+                            if (edgeid != edge.id && edges[edgeid].type == "T") {
+                                edges[edgeid].value = 1 / (1 / edges[edgeid].value + 1 / edge.value);
+                                edges[edgeid].constant = "1/(1/" + edges[edgeid].constant + "+1/" + edge.constant + ")";
+                                remove_edge(edge.id);
+                                return simplify_edges();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     void save_to_json(string path) {
         /*
@@ -253,6 +270,7 @@ public:
         - Check that no through sources can be included
         Moreover, it assigns row to each variable in the state equation
         */
+        simplify_edges();
         int tree_branches = 0;
         independent = {};
         sources = {};
