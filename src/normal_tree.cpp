@@ -896,6 +896,42 @@ public:
         return edge_values;
     }
 
+    void get_dual_graph(string path) {
+        SparseMatrix<int> adj(num_edges, num_edges, 0, 1);
+        for (int i=0; i<num_edges; i++) {
+            for (auto [target, list] : edgelist[edges[i].target_node]) {
+                for (int j : list) {
+                    if (i == j) continue;
+                    adj.ref(i, j) = 1;
+                }
+            }
+            for (auto [target, list] : edgelist[edges[i].source_node]) {
+                for (int j : list) {
+                    if (i == j) continue;
+                    adj.ref(i, j) = -2;
+                }
+            }
+            for (auto [source, map] : edgelist) {
+                for (auto [target, list] : map) {
+                    if (target == edges[i].target_node) {
+                        for (int j : list) {
+                            if (i == j) continue;
+                            adj.ref(i, j) = -1;
+                        }
+                    }
+                    if (target == edges[i].source_node) {
+                        for (int j : list) {
+                            if (i == j) continue;
+                            adj.ref(i, j) = 2;
+                        }
+                    }
+                }
+            }
+        }
+        adj.toCSV(path);
+    } 
+
+
     private:
     int find_parent(int u) {
         int parent_u = parent[u];
@@ -924,7 +960,6 @@ public:
     }
 
 
-
 };
 
 LinearGraph graph_from_json(string path) {
@@ -944,6 +979,7 @@ void solve_system(string path, bool verbose=false) {
     g.build_normal();
     if (verbose) cout << "Built normal" << endl;
     g.save_to_json(join_paths({path, "normal_tree.json"}));
+    g.get_dual_graph(join_paths({path, "dual.csv"}));
     g.generate_state_eq(path, verbose);
     if (verbose) cout << "Generate equations" << endl;
     // g.generate_state_eq_symbolic(join_paths({path, "symb"}), false);
